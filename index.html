@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>絕亞模擬器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@900&family=JetBrains+Mono:wght@700&display=swap">
+<style>
+/* Layout: title block, then a grid of simulator cards grouped by phase. Same dark raid-HUD look as the sims. */
+:root{
+  --bg:#0c0f17; --panel:#141a26; --panel-hi:#1a2233; --line:#26304a; --fg:#e7ebf5; --muted:#8d97b0; --gold:#e7c46a;
+  --f-display:"Noto Serif TC","Songti TC",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px}
+.wrap{max-width:880px;margin:0 auto;display:grid;gap:28px}
+h1{font-family:var(--f-display);font-weight:900;font-size:clamp(28px,6vw,40px);margin:0;letter-spacing:.04em;text-wrap:balance}
+h1 b{color:var(--gold)}
+.lead{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{display:grid;gap:6px;align-content:start;padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  color:inherit;text-decoration:none;transition:border-color .15s,background .15s,transform .15s}
+.card:hover,.card:focus-visible{border-color:var(--gold);background:var(--panel-hi);transform:translateY(-2px);outline:none}
+.phase{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;color:var(--gold)}
+.card h2{margin:0;font-size:19px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.go{margin-top:6px;font-size:13px;font-weight:700;color:var(--gold)}
+footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>絕亞歷山大 <b>模擬器</b></h1>
+    <p class="lead">FF14 絕亞歷山大討滅戰的機制練習。點一張卡片進入模擬器。</p>
+  </header>
+
+  <!-- 新增模擬器：複製一個 <a class="card"> 區塊，把 href 改成資料夾名稱（結尾加 /） -->
+  <nav class="grid" aria-label="模擬器列表">
+    <a class="card" href="1211/">
+      <span class="phase">PHASE 2</span>
+      <h2>1211 限制解除</h2>
+      <p>奇偶數處理、阿爾法之劍與超級衝擊誘導，配合鷹式爆彈順時針跑位。</p>
+      <span class="go">開始練習 →</span>
+    </a>
+    <a class="card" href="p3-stasis/">
+      <span class="phase">PHASE 3</span>
+      <h2>時間停止</h2>
+      <p>接近強制、接近禁止、加重罰的站位，依攻略巨集判定火焰噴射與アルファソード。</p>
+      <span class="go">開始練習 →</span>
+    </a>
+  </nav>
+
+  <footer>依網路攻略整理的簡化模擬，數值與座標為近似值，正式打本請以團隊的圖或影片為準。</footer>
+</div>
+</html>

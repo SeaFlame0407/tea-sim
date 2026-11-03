@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+.back{display:inline-block;flex-basis:100%;font-size:13px;color:#8d97b0;text-decoration:none;margin-bottom:2px}.back:hover,.back:focus-visible{color:#e7c46a}</style>
+<title>絕亞 1211 練習場</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-screen sim — arena canvas left, control/timeline column right; stacks on phones. Single dark "raid HUD" look by choice. */
+:root{
+  --bg:#0c0f17; --panel:#141a26; --line:#26304a; --fg:#e7ebf5; --muted:#8d97b0;
+  --gold:#e7c46a; --odd:#4ea3ff; --even:#ff5a6a; --ok:#5fd38d; --warn:#ffb347;
+  --f-display:"Noto Serif TC","Songti TC",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+h1{font-family:var(--f-display);font-weight:900;font-size:28px;margin:0;letter-spacing:.04em;text-wrap:balance}
+h1 b{color:var(--gold)}
+.sub{color:var(--muted);font-size:13px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;min-width:0}
+canvas{display:block;width:100%;max-width:100%;aspect-ratio:1/1;border-radius:50%;touch-action:none;cursor:crosshair;background:var(--bg)}
+.call{position:absolute;left:50%;top:6%;transform:translateX(-50%);font-family:var(--f-display);font-weight:900;font-size:clamp(18px,4vw,30px);
+  color:var(--gold);text-shadow:0 2px 12px #000;pointer-events:none;white-space:nowrap}
+.hud{position:absolute;left:0;bottom:0;font-family:var(--f-mono);font-size:13px;color:var(--muted);pointer-events:none}
+.hud b{color:var(--fg)}
+.side{display:grid;gap:12px;min-width:0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:10px}
+.box h2{margin:0;font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.nums{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+.nums button{font-family:var(--f-mono);font-weight:700;padding:6px 0;border-radius:6px;border:1px solid var(--line);background:#0f1420;color:var(--fg);cursor:pointer}
+.nums button.o{color:var(--odd)} .nums button.e{color:var(--even)}
+.nums button[aria-pressed="true"]{background:var(--gold);color:#1a1405;border-color:var(--gold)}
+.row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+label{display:flex;gap:6px;align-items:center;cursor:pointer}
+select{background:#0f1420;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit}
+.go{font:700 16px var(--f-body);padding:10px;border-radius:8px;border:0;background:var(--gold);color:#1a1405;cursor:pointer}
+.go:focus-visible,.nums button:focus-visible,.pad button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.pad{display:flex;gap:8px}
+.pad button{flex:1;padding:10px 6px;border-radius:8px;border:1px solid var(--line);background:#0f1420;color:var(--fg);font:500 14px var(--f-body);cursor:pointer}
+.pad button:disabled{opacity:.4}
+.keys{color:var(--muted);font-size:12.5px}
+kbd{font-family:var(--f-mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;color:var(--fg)}
+.timeline{position:relative;height:38px;border-radius:6px;background:#0f1420;border:1px solid var(--line);overflow:hidden}
+.timeline .mk{position:absolute;top:0;bottom:0;width:2px}
+.timeline .lbl{position:absolute;bottom:2px;font:700 10px var(--f-mono);transform:translateX(-50%);white-space:nowrap}
+.timeline .cur{position:absolute;top:0;bottom:0;width:2px;background:var(--fg)}
+#log{font-size:13px;max-height:180px;overflow:auto;display:grid;gap:3px;font-variant-numeric:tabular-nums}
+#log .d{color:var(--even)} #log .s{color:var(--ok)} #log .i{color:var(--muted)}
+.result{font-family:var(--f-display);font-size:20px;font-weight:900}
+.guide{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.guide p,.guide li{margin:0;color:#c9d0e2;font-size:13.5px}
+.guide ol{margin:0;padding-left:18px;display:grid;gap:4px}
+.note{color:var(--muted);font-size:12.5px}
+.note a{color:var(--odd)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <a class="back" href="../">← 回模擬器選單</a>
+    <h1>絕亞 <b>1211</b> 練習場</h1>
+    <span class="sub">亞歷山大絕境戰 · 轉場「限制器解除（サイコロ 1–8）」日式 1211 跑法模擬</span>
+  </header>
+
+  <div class="main">
+    <div class="stage">
+      <canvas id="cv" width="800" height="800" aria-label="場地俯視圖，上方為北"></canvas>
+      <div class="call" id="call">選號碼，按「開始」</div>
+      <div class="hud" id="hud"></div>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h2>你的號碼</h2>
+        <div class="nums" id="nums"></div>
+        <div class="row">
+          <label><input type="checkbox" id="optTele" checked> 顯示炸彈預兆</label>
+          <label><input type="checkbox" id="optHint" checked> 顯示走位提示</label>
+          <label><input type="checkbox" id="optAuto"> 自動示範（觀戰）</label>
+          <label>速度 <select id="optSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option></select></label>
+        </div>
+        <button class="go" id="go">開始</button>
+        <div class="pad">
+          <button id="bSprint">衝刺 <kbd>Shift</kbd></button>
+          <button id="bKb">堅實 / 亞穆倫 <kbd>Space</kbd></button>
+        </div>
+        <div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵移動，或在場地上按住滑鼠（手機按住螢幕）往那裡走。最後移動的方向就是角色面向。</div>
+      </div>
+
+      <div class="box">
+        <h2>時間軸（秒）</h2>
+        <div class="timeline" id="tl"></div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--warn)"></i>鷹式爆彈</span>
+          <span><i class="sw" style="background:var(--odd)"></i>奇數：扇形（阿爾法之劍）</span>
+          <span><i class="sw" style="background:var(--even)"></i>偶數：突進（超級衝擊）</span>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2>戰鬥紀錄</h2>
+        <div class="result" id="result"></div>
+        <div id="log"><span class="i">尚未開始。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box guide">
+    <div>
+      <h2>機制</h2>
+      <ol>
+        <li>8 人隨機拿到 1–8 號，奇數藍、偶數紅。</li>
+        <li>輪到奇數時，巡航驅逐者出現在他<b>背後</b>，朝他面向的方向放扇形，會擊退。</li>
+        <li>接著從原地朝下一個偶數突進（直線），偶數若背對 Boss 會被擊飛很遠。</li>
+        <li>同時鷹式爆彈依順時針、成對（對角）落下 4 次 → 中央 → 再 4 次 → 中央。</li>
+        <li>任何追擊吃到第 2 次（易傷）就會死。</li>
+      </ol>
+    </div>
+    <div>
+      <h2>1211 跑法（本模擬的版本）</h2>
+      <ol>
+        <li>全員先站中央。第一炸有 4 種模式，一定會有一顆落在北半邊的 <b>D、1、A、2</b> 其中一點（另一顆在對角）。以那一點為基準，跟在爆炸後面順時針往北跑。</li>
+        <li><b>1211 = 每組往前數的格數</b>：1、2 在第一炸往前 1 格（第二炸的位置）；3、4 再往前 2 格；5、6 再往前 1 格；7、8 再往前 1 格。</li>
+        <li>奇數站外圈、面朝場外；偶數站內圈黑線點、面朝外接突進。</li>
+        <li>3、4 就位後先等中央爆炸；第六炸落在他們前面一格，落地後其他人再衝過去。</li>
+        <li>處理完的奇數沿外圈繞回來，不要直線切，會被下一組偶數的突進撞到。</li>
+        <li>最後在第八炸的位置（第三條線）集合。</li>
+      </ol>
+    </div>
+    <div>
+      <h2>說明</h2>
+      <p class="note">這是依網路攻略文字整理的簡化模擬：機制順序與跑法概念符合攻略，但爆炸時間、範圍大小和站位座標是我估的近似值，不是遊戲實際的數值。正式打本請以你團隊用的圖或影片為準。</p>
+      <p class="note">參考：
+        <a href="https://forum.gamer.com.tw/C.php?bsn=17608&snA=20528" target="_blank" rel="noopener">巴哈 短期通關絕亞心得</a>、
+        <a href="https://na.finalfantasyxiv.com/lodestone/character/30534036/blog/5531134/" target="_blank" rel="noopener">Lodestone 絶アレキ攻略忘備録</a>、
+        <a href="https://note.com/mimichoco_33/n/n9ab4e7001ef2" target="_blank" rel="noopener">みみちょこ 1211 注意點</a>、
+        <a href="https://ffxiv.consolegameswiki.com/wiki/The_Epic_of_Alexander_(Ultimate)" target="_blank" rel="noopener">Consolegameswiki TEA</a></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+// Floor proportions tuned from the in-game screenshot and the user's feedback. K scales attack sizes.
+const ARENA = 17, OUTER_LINE = 0.8*ARENA, INNER = 0.55*ARENA, RING = 0.64*ARENA, K = 0.87;
+const HAWK_R = 7.6, CENTER_R = 8.5, // ring blasts reach the neighbouring line; center blast reaches the black circle
+      PR = 0.6, CONE = 16*K, DASH_W = 2*K;
+const RG = RING, EV = INNER, OD = OUTER_LINE, OR = OUTER_LINE + 0.9; // run on lights, even on black circle, odd on outer line
+const SPEED = 6, SPRINT = 1.3, END = 20;
+const HAWK_T = k => 2.5 + 1.8 * k;          // 10 sets: 0-3 ring, 4 center, 5-8 ring, 9 center
+const PAIRS = [ {c:6.6, b:1}, {c:11.9, b:3}, {c:14.3, b:4}, {c:16.0, b:5} ]; // 1211: +1, +2, +1, +1 from the first blast // cone time, bait angle index
+PAIRS.forEach(p => p.d = +(p.c + 0.7).toFixed(2));
+const ROLES = ['MT','ST','H1','H2','D1','D2','D3','D4'];
+const MARK = ['B','3','C','4','D','1','A','2']; // by 45° step, clockwise from east
+const ROLE_COL = {MT:'#5b8cff',ST:'#5b8cff',H1:'#4fd28a',H2:'#4fd28a',D1:'#ff6b6b',D2:'#ff6b6b',D3:'#ff6b6b',D4:'#ff6b6b'};
+
+// Waypoints per number: [time, radius, angleIndex, bait?]. Hand-checked against the explosion windows.
+const G = [[0,0],[2.5,RG,0],[4.3,RG,1],[6.1,RG,2],[7.9,RG,3],[11.5,RG,4],[13.3,RG,5],[15.1,RG,6]];
+const upTo = t => G.filter(w => w[0] < t);
+const after = t => G.filter(w => w[0] > t);
+const PLAN = {
+  1: [[0,0],[2.5,OD,0],[4.3,OD,1,1],[6.8,OR,2],[7.6,RG,2],...after(7.6)],
+  2: [[0,0],[2.5,RG,0],[4.3,EV,1,1],[7.5,RG,2],...after(7.5)],
+  3: [...upTo(7.9),[7.9,OD,3,1],[12.1,OR,4],[12.7,RG,4],...after(12.7)],
+  4: [...upTo(7.9),[7.9,EV,3,1],[12.8,RG,5],...after(12.8)],
+  5: [...upTo(11.5),[11.5,OD,4,1],[15.2,RG,4],[16.9,RG,6]],
+  6: [...upTo(11.5),[11.5,EV,4,1],[15.2,RG,4],[16.9,RG,6]],
+  7: [...upTo(13.3),[13.3,OD,5,1],[16.2,OR,6],[17.0,RG,6]],
+  8: [...upTo(13.3),[13.3,EV,5,1],[16.9,RG,6]],
+};
+const CALLS = [[0,'確認號碼，看第一炸'],[2.5,'第一炸＝基準點'],[4.3,'第二炸 → 1、2 就位'],[6.6,'1、2'],[7.9,'3、4 就位（往前 2 格）'],[9.7,'中央爆炸，先等'],[11.5,'第六炸落地 → 其他人衝過去'],[11.9,'3、4'],[14.3,'5、6'],[16.0,'7、8'],[16.6,'第八炸的位置集合']];
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+let myNum = 0; // 0 = random
+let S = null, keys = {}, pointer = null, last = 0;
+
+// ---------- UI ----------
+const nums = $('nums');
+['隨',1,2,3,4,5,6,7,8].forEach((n,i) => {
+  const b = document.createElement('button');
+  b.textContent = n; b.className = i===0 ? '' : (i%2 ? 'o' : 'e');
+  b.setAttribute('aria-pressed', i===0); b.id = 'num'+i;
+  b.onclick = () => { myNum = i; [...nums.children].forEach((c,j)=>c.setAttribute('aria-pressed', j===i)); };
+  nums.appendChild(b);
+});
+const tl = $('tl');
+for (let k=0;k<10;k++) mark(HAWK_T(k), 'var(--warn)', k===4||k===9 ? '中' : '');
+PAIRS.forEach((p,i) => { mark(p.c,'var(--odd)', 2*i+1); mark(p.d,'var(--even)', 2*i+2); });
+const cur = document.createElement('div'); cur.className='cur'; cur.style.left='0'; tl.appendChild(cur);
+function mark(t,col,txt){
+  const m=document.createElement('div'); m.className='mk'; m.style.left=(t/END*100)+'%'; m.style.background=col; tl.appendChild(m);
+  if(txt!==''){const l=document.createElement('div'); l.className='lbl'; l.style.left=(t/END*100)+'%'; l.style.color=col; l.textContent=txt; tl.appendChild(l);}
+}
+$('go').onclick = start;
+$('bSprint').onclick = () => useSprint(me());
+$('bKb').onclick = () => useKb(me());
+addEventListener('keydown', e => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key) && e.target === document.body) e.preventDefault();
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === 'Shift') useSprint(me());
+  if (e.key === ' ' || e.key.toLowerCase() === 'f') useKb(me());
+  if (e.key === 'Enter' && (!S || S.done)) start();
+});
+addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+addEventListener('blur', () => { keys = {}; pointer = null; });
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pointer = toWorld(e); });
+cv.addEventListener('pointermove', e => { if (pointer) pointer = toWorld(e); });
+const up = () => pointer = null;
+cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+
+function toWorld(e){
+  const r = cv.getBoundingClientRect(), s = r.width / (2*(ARENA+2));
+  return {x:(e.clientX - r.left - r.width/2)/s, y:(e.clientY - r.top - r.height/2)/s};
+}
+
+// ---------- sim ----------
+function start(){
+  const order = [1,2,3,4,5,6,7,8].sort(() => Math.random()-.5);
+  const mine = myNum || (1 + Math.floor(Math.random()*8));
+  const th0 = (4 + Math.floor(Math.random()*4)) * Math.PI/4; // first blast on the north half: D / 1 / A / 2
+  const players = ROLES.map((role,i) => {
+    const a = Math.random()*Math.PI*2, r = Math.random()*1.2;
+    return {role, num:order[i], x:Math.cos(a)*r, y:Math.sin(a)*r, face:-Math.PI/2, alive:true, cause:'',
+      vuln:0, kbUntil:-1, kbUsed:false, sprintUntil:-1, sprintUsed:false, kv:null, me:false};
+  });
+  // put "you" on a stable role, swap numbers so you get `mine`
+  const you = players[4], holder = players.find(p => p.num === mine);
+  [holder.num, you.num] = [you.num, mine]; you.me = true; you.role = '你';
+  S = {t:0, th0, players, fx:[], chaser:null, ev:[], done:false, log:[], auto:$('optAuto').checked,
+       speed:+$('optSpeed').value, tele:$('optTele').checked, hint:$('optHint').checked};
+  for (let k=0;k<10;k++) S.ev.push({t:HAWK_T(k), f:() => hawk(k)});
+  PAIRS.forEach((p,i) => {
+    const odd = 2*i+1, even = 2*i+2;
+    S.ev.push({t:p.c-0.6, f:() => spawnChaser(odd)});
+    S.ev.push({t:p.c, f:() => cone()});
+    S.ev.push({t:p.d-0.35, f:() => lockDash(even)});
+    S.ev.push({t:p.d, f:() => dash()});
+    S.ev.push({t:p.c-1.2, f:() => botKb(odd)});
+    S.ev.push({t:p.d-1.6, f:() => botKb(even)});
+  });
+  S.ev.push({t:2.0, f:() => S.players.forEach(p => isBot(p) && useSprint(p))});
+  S.ev.sort((a,b) => a.t-b.t);
+  $('log').innerHTML = ''; $('result').textContent = '';
+  log(`你是 ${mine} 號（${mine%2?'奇數，外圈放扇形':'偶數，內圈接突進'}）。`, 'i');
+  log(`本場第一炸落在 ${MARK[Math.round(th0/(Math.PI/4))%8]} 點（對角也有一顆）。1、2 去第二炸的 ${MARK[(Math.round(th0/(Math.PI/4))+1)%8]} 點。`, 'i');
+  $('go').textContent = '重新開始';
+  cv.focus?.();
+}
+const me = () => S && S.players.find(p => p.me);
+const isBot = p => !p.me || S.auto;
+const byNum = n => S.players.find(p => p.num === n);
+const ang = j => S.th0 + j*Math.PI/4;
+const alive = () => S.players.filter(p => p.alive);
+
+function useSprint(p){ if(!S||S.done||!p||!p.alive||p.sprintUsed) return; p.sprintUsed=true; p.sprintUntil=S.t+10; if(p.me) log('使用衝刺。','i'); }
+function useKb(p){ if(!S||S.done||!p||!p.alive||p.kbUsed) return; p.kbUsed=true; p.kbUntil=S.t+6; if(p.me) log('使用堅實之心／亞穆倫（6 秒防擊退）。','i'); }
+function botKb(n){ const p = byNum(n); if (p && isBot(p)) useKb(p); }
+
+function kill(p, why){
+  if (!p.alive) return;
+  p.alive = false; p.cause = why;
+  log(`${S.t.toFixed(1)}s ${p.me?'你':p.role}（${p.num}）死亡：${why}`, 'd');
+}
+function hit(p, kx, ky, dist){
+  p.vuln++;
+  if (p.vuln >= 2) return kill(p, '第二次吃到追擊（易傷）');
+  if (S.t < p.kbUntil || dist <= 0) return;
+  const L = Math.hypot(kx,ky) || 1;
+  p.kv = {vx:kx/L*dist/0.3, vy:ky/L*dist/0.3, until:S.t+0.3};
+}
+
+function hawk(k){
+  const center = k===4 || k===9;
+  const spots = center ? [{x:0,y:0,r:CENTER_R}] :
+    [0,Math.PI].map(o => { const a = ang(k<=3?k:k-5)+o; return {x:Math.cos(a)*RING, y:Math.sin(a)*RING, r:HAWK_R}; });
+  spots.forEach(s => {
+    S.fx.push({kind:'blast', ...s, t:S.t});
+    alive().forEach(p => { if (Math.hypot(p.x-s.x,p.y-s.y) < s.r) kill(p,'被鷹式爆彈炸到'); });
+  });
+}
+function targetOr(n){
+  let p = byNum(n);
+  if (!p.alive) { const a = alive(); p = a[Math.floor(Math.random()*a.length)]; if (p) log(`${n} 號已死，追擊改打隨機目標！`,'d'); }
+  return p;
+}
+function spawnChaser(n){
+  const p = targetOr(n); if (!p) return;
+  const dir = p.face;
+  S.chaser = {x:p.x - Math.cos(dir)*2.5*K, y:p.y - Math.sin(dir)*2.5*K, dir, phase:'cone', tgt:p, from:S.t};
+}
+function cone(){
+  const c = S.chaser; if (!c) return;
+  S.fx.push({kind:'cone', x:c.x, y:c.y, dir:c.dir, t:S.t});
+  alive().forEach(p => {
+    const dx=p.x-c.x, dy=p.y-c.y, d=Math.hypot(dx,dy);
+    let da = Math.atan2(dy,dx)-c.dir; da = Math.atan2(Math.sin(da),Math.cos(da));
+    if (d < CONE && (Math.abs(da) <= Math.PI/4 || d < 1.2)) hit(p, dx||Math.cos(c.dir), dy||Math.sin(c.dir), 2.5*K);
+  });
+}
+function lockDash(n){
+  const c = S.chaser; if (!c) return;
+  const p = targetOr(n); if (!p) return;
+  c.phase='dash'; c.tgt=p; c.tx=p.x; c.ty=p.y;
+}
+function dash(){
+  const c = S.chaser; if (!c || c.phase!=='dash') return;
+  const tgt = c.tgt; c.tx = tgt.alive ? tgt.x : c.tx; c.ty = tgt.alive ? tgt.y : c.ty;
+  let dx=c.tx-c.x, dy=c.ty-c.y; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
+  const len = 2*ARENA; // the charge line runs across the whole arena
+  S.fx.push({kind:'dash', x:c.x, y:c.y, dx, dy, len, t:S.t});
+  alive().forEach(p => {
+    const vx=p.x-c.x, vy=p.y-c.y, proj=vx*dx+vy*dy, perp=Math.abs(vx*dy-vy*dx);
+    if (proj >= -0.5 && proj <= len && perp <= DASH_W + PR) {
+      let kb = 4*K;
+      if (p === tgt) { const facing = Math.cos(p.face)*-dx + Math.sin(p.face)*-dy; kb = (facing > 0.3 ? 2 : 12)*K; }
+      hit(p, dx, dy, kb);
+    }
+  });
+  c.x = c.tx; c.y = c.ty; c.phase='gone'; c.gone=S.t;
+}
+
+function planTarget(n, t){
+  const wps = PLAN[n]; let w = wps[0];
+  for (const x of wps) if (x[0] <= t) w = x;
+  if (w[1] === 0) return {x:0, y:0, bait:false};
+  const a = ang(w[2]);
+  const rj = w[3] ? 0 : ((n%4)-1.5)*0.35; // spread along the line, not across it
+  return {x:Math.cos(a)*(w[1]+rj), y:Math.sin(a)*(w[1]+rj), bait:!!w[3], a, r:w[1]+rj};
+}
+
+function moveToward(p, tg, maxd){
+  const r0 = Math.hypot(p.x,p.y), rt = Math.hypot(tg.x,tg.y);
+  let nx, ny;
+  if (rt < 0.5 || r0 < 1.5) {
+    const dx=tg.x-p.x, dy=tg.y-p.y, d=Math.hypot(dx,dy);
+    if (d <= maxd) { nx=tg.x; ny=tg.y; } else { nx=p.x+dx/d*maxd; ny=p.y+dy/d*maxd; }
+  } else {
+    const a0 = Math.atan2(p.y,p.x), at = Math.atan2(tg.y,tg.x);
+    const da = Math.atan2(Math.sin(at-a0), Math.cos(at-a0));
+    const arc = da*(r0+rt)/2, dr = rt-r0, L = Math.hypot(arc,dr);
+    const f = L <= maxd ? 1 : maxd/L;
+    const a = a0+da*f, r = r0+dr*f; nx=Math.cos(a)*r; ny=Math.sin(a)*r;
+  }
+  const mx=nx-p.x, my=ny-p.y;
+  if (Math.hypot(mx,my) > 0.02) p.face = Math.atan2(my,mx);
+  p.x=nx; p.y=ny;
+  if (tg.bait && Math.hypot(tg.x-p.x,tg.y-p.y) < 0.15) p.face = Math.atan2(p.y,p.x); // turn to face outward
+}
+
+function step(dt){
+  const t0 = S.t; S.t += dt;
+  while (S.ev.length && S.ev[0].t <= S.t) S.ev.shift().f();
+  for (const p of S.players) {
+    if (!p.alive) continue;
+    const sp = SPEED * (S.t < p.sprintUntil ? SPRINT : 1) * dt;
+    if (p.kv && S.t < p.kv.until) { p.x += p.kv.vx*dt; p.y += p.kv.vy*dt; }
+    else if (isBot(p)) moveToward(p, planTarget(p.num, S.t), sp);
+    else {
+      let mx = (keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0), my = (keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+      if (!mx && !my && pointer) { const dx=pointer.x-p.x, dy=pointer.y-p.y, d=Math.hypot(dx,dy); if (d>0.15){mx=dx/d;my=dy/d;} else if (d>0.02) p.face=Math.atan2(dy,dx); }
+      const L = Math.hypot(mx,my);
+      if (L) { p.x += mx/L*sp; p.y += my/L*sp; p.face = Math.atan2(my,mx); }
+    }
+    if (Math.hypot(p.x,p.y) > ARENA) kill(p, '被擊飛出場地');
+  }
+  const c = CALLS.filter(x => x[0] <= S.t).pop();
+  $('call').textContent = c ? c[1] : '';
+  if (S.t >= END) finish();
+}
+
+function finish(){
+  S.done = true;
+  const a = alive().length, m = me();
+  const msg = m.alive && a===8 ? '全員存活，過了！' : m.alive ? `你活下來了（${a}/8 存活）` : `你死了：${m.cause}`;
+  $('result').textContent = msg;
+  $('result').style.color = m.alive && a===8 ? 'var(--ok)' : m.alive ? 'var(--warn)' : 'var(--even)';
+  log(msg, m.alive ? 's' : 'd');
+  $('call').textContent = '按「重新開始」或 Enter 再來一次';
+}
+function log(s, cls){ const d=document.createElement('div'); d.className=cls; d.textContent=s; const L=$('log'); L.appendChild(d); L.scrollTop=L.scrollHeight; }
+
+// ---------- render ----------
+function draw(){
+  const W = cv.width, s = W/(2*(ARENA+2)), cx = W/2;
+  const X = x => cx + x*s, Y = y => cx + y*s;
+  ctx.clearRect(0,0,W,W);
+  // floor
+  const g = ctx.createRadialGradient(cx,cx,0,cx,cx,ARENA*s);
+  g.addColorStop(0,'#2a3350'); g.addColorStop(1,'#161c2c');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cx,ARENA*s,0,7); ctx.fill();
+  ctx.strokeStyle='#d56bff'; ctx.lineWidth=5; ctx.shadowColor='#d56bff'; ctx.shadowBlur=14; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.lineWidth=1;
+  for (let i=0;i<8;i++){ const a=i*Math.PI/4; ctx.beginPath(); ctx.moveTo(cx,cx); ctx.lineTo(X(Math.cos(a)*ARENA),Y(Math.sin(a)*ARENA)); ctx.stroke(); }
+  ctx.strokeStyle='#05070c'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(cx,cx,INNER*s,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cx,OUTER_LINE*s,0,7); ctx.stroke();
+  ctx.setLineDash([2,6]); ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(cx,cx,RING*s,0,7); ctx.stroke(); ctx.setLineDash([]);
+  for (let i=0;i<8;i++){ const a=i*Math.PI/4;
+    ctx.fillStyle='#fff8d8'; ctx.beginPath(); ctx.arc(X(Math.cos(a)*RING),Y(Math.sin(a)*RING),0.35*s,0,7); ctx.fill();
+    ctx.fillStyle='#05070c'; ctx.beginPath(); ctx.arc(X(Math.cos(a)*INNER),Y(Math.sin(a)*INNER),0.3*s,0,7); ctx.fill(); }
+  // waymarks
+  ctx.font=`700 ${1.3*s}px "JetBrains Mono",monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const q = Math.SQRT1_2;
+  [['A',0,-1,'#ff6b6b'],['B',1,0,'#ffd75a'],['C',0,1,'#5ab0ff'],['D',-1,0,'#c58bff'],
+   ['1',-q,-q,'#ff6b6b'],['2',q,-q,'#ffd75a'],['3',q,q,'#5ab0ff'],['4',-q,q,'#c58bff']].forEach(([l,dx,dy,c]) => { ctx.fillStyle=c; ctx.fillText(l, X(dx*(ARENA-1.4)), Y(dy*(ARENA-1.4))); });
+
+  if (!S) return;
+  const t = S.t;
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cx,ARENA*s,0,7); ctx.clip();
+  // hawk telegraphs
+  if (S.tele) for (let k=0;k<10;k++){
+    const T = HAWK_T(k), lead = T - t;
+    if (lead > 0 && lead < 1.4) {
+      const center = k===4||k===9;
+      const spots = center ? [[0,0,CENTER_R]] : [0,Math.PI].map(o => { const a = ang(k<=3?k:k-5)+o; return [Math.cos(a)*RING, Math.sin(a)*RING, HAWK_R]; });
+      spots.forEach(([x,y,r]) => {
+        ctx.fillStyle=`rgba(255,150,40,${0.08+0.22*(1-lead/1.4)})`; ctx.strokeStyle='rgba(255,170,60,.8)'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(X(x),Y(y),r*s,0,7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle='rgba(255,190,90,.35)'; ctx.beginPath(); ctx.arc(X(x),Y(y),r*s*(1-lead/1.4),0,7); ctx.fill();
+      });
+    }
+  }
+  // effects
+  S.fx = S.fx.filter(f => t - f.t < 0.6);
+  for (const f of S.fx) {
+    const a = 1 - (t-f.t)/0.6;
+    if (f.kind==='blast'){ ctx.fillStyle=`rgba(255,120,30,${0.7*a})`; ctx.beginPath(); ctx.arc(X(f.x),Y(f.y),f.r*s,0,7); ctx.fill(); }
+    if (f.kind==='cone'){ ctx.fillStyle=`rgba(78,163,255,${0.55*a})`; ctx.beginPath(); ctx.moveTo(X(f.x),Y(f.y)); ctx.arc(X(f.x),Y(f.y),CONE*s,f.dir-Math.PI/4,f.dir+Math.PI/4); ctx.closePath(); ctx.fill(); }
+    if (f.kind==='dash'){ drawRect(f.x,f.y,f.dx,f.dy,f.len,`rgba(255,90,106,${0.6*a})`, X, Y, s); }
+  }
+  // chaser + previews
+  const c = S.chaser;
+  if (c && !(c.phase==='gone' && t-c.gone>0.5)) {
+    if (S.tele && c.phase==='cone') { ctx.fillStyle='rgba(78,163,255,.14)'; ctx.strokeStyle='rgba(78,163,255,.6)'; ctx.beginPath(); ctx.moveTo(X(c.x),Y(c.y)); ctx.arc(X(c.x),Y(c.y),CONE*s,c.dir-Math.PI/4,c.dir+Math.PI/4); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    if (S.tele && c.phase==='dash') { let dx=c.tgt.x-c.x, dy=c.tgt.y-c.y; const L=Math.hypot(dx,dy)||1; drawRect(c.x,c.y,dx/L,dy/L,2*ARENA,'rgba(255,90,106,.18)',X,Y,s); }
+    ctx.fillStyle='#b48cff'; ctx.strokeStyle='#1a1030'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(X(c.x),Y(c.y),1.1*s,0,7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#1a1030'; ctx.font=`700 ${0.9*s}px sans-serif`; ctx.fillText('巡',X(c.x),Y(c.y)+1);
+  }
+  ctx.restore();
+  // hint
+  const m = me();
+  if (S.hint && m.alive && !S.auto && !S.done) {
+    const tg = planTarget(m.num, t);
+    ctx.strokeStyle='rgba(231,196,106,.9)'; ctx.setLineDash([4,4]); ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(X(m.x),Y(m.y)); ctx.lineTo(X(tg.x),Y(tg.y)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(X(tg.x),Y(tg.y),0.9*s,0,7); ctx.stroke();
+    if (tg.bait) { const a=Math.atan2(tg.y,tg.x); ctx.beginPath(); ctx.moveTo(X(tg.x),Y(tg.y)); ctx.lineTo(X(tg.x+Math.cos(a)*2.2),Y(tg.y+Math.sin(a)*2.2)); ctx.stroke(); }
+  }
+  // players
+  for (const p of S.players) {
+    const px=X(p.x), py=Y(p.y);
+    ctx.globalAlpha = p.alive ? 1 : 0.35;
+    if (p.alive && t < p.kbUntil) { ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(px,py,1.15*s,0,7); ctx.stroke(); }
+    ctx.fillStyle = p.me ? '#e7c46a' : ROLE_COL[p.role];
+    ctx.beginPath(); ctx.arc(px,py,(p.me?0.85:0.7)*s,0,7); ctx.fill();
+    ctx.strokeStyle='#0c0f17'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.beginPath();
+    const f=p.face; ctx.moveTo(px+Math.cos(f)*1.3*s, py+Math.sin(f)*1.3*s);
+    ctx.lineTo(px+Math.cos(f+2.5)*0.75*s, py+Math.sin(f+2.5)*0.75*s); ctx.lineTo(px+Math.cos(f-2.5)*0.75*s, py+Math.sin(f-2.5)*0.75*s); ctx.closePath(); ctx.fill();
+    // limit cut marker
+    const odd = p.num%2;
+    ctx.fillStyle = odd ? '#4ea3ff' : '#ff5a6a';
+    ctx.beginPath(); ctx.arc(px, py-1.7*s, 0.65*s, 0, 7); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font=`700 ${0.85*s}px "JetBrains Mono",monospace`; ctx.fillText(p.num, px, py-1.65*s);
+    if (p.vuln) { ctx.fillStyle='#ffb347'; ctx.font=`700 ${0.6*s}px sans-serif`; ctx.fillText('易傷', px+1.6*s, py-1.7*s); }
+    if (!p.alive) { ctx.strokeStyle='#ff5a6a'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(px-.6*s,py-.6*s); ctx.lineTo(px+.6*s,py+.6*s); ctx.moveTo(px+.6*s,py-.6*s); ctx.lineTo(px-.6*s,py+.6*s); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    if (p.me) { ctx.fillStyle='#e7c46a'; ctx.font=`700 ${0.7*s}px "Noto Sans TC",sans-serif`; ctx.fillText('你', px, py+1.5*s); }
+  }
+  $('hud').innerHTML = `<b>${t.toFixed(1)}</b>s · 你 <b>${m.num}</b> 號 · 衝刺 ${m.sprintUsed?'已用':'可用'} · 堅實 ${m.kbUsed?'已用':'可用'}`;
+  $('bSprint').disabled = m.sprintUsed; $('bKb').disabled = m.kbUsed;
+  cur.style.left = Math.min(100, t/END*100) + '%';
+}
+function drawRect(x,y,dx,dy,len,col,X,Y,s){
+  const nx=-dy*DASH_W, ny=dx*DASH_W; ctx.fillStyle=col; ctx.beginPath();
+  ctx.moveTo(X(x+nx),Y(y+ny)); ctx.lineTo(X(x+dx*len+nx),Y(y+dy*len+ny)); ctx.lineTo(X(x+dx*len-nx),Y(y+dy*len-ny)); ctx.lineTo(X(x-nx),Y(y-ny)); ctx.closePath(); ctx.fill();
+}
+
+function resize(){
+  const r = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio||1);
+  const w = Math.round(r.width*d); if (w && cv.width !== w) { cv.width = w; cv.height = w; }
+}
+function loop(ts){
+  resize();
+  const dt = Math.min(0.05, (ts - last)/1000 || 0); last = ts;
+  if (S && !S.done) { const h = dt*S.speed, n = Math.ceil(h/0.008); for (let i=0;i<n;i++) if (!S.done) step(h/n); }
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>

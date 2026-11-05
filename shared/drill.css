@@ -1,0 +1,55 @@
+/* Shared look for the TEA step-drill simulators: arena left, briefing rail right; stacks on phones. Single dark raid-HUD look by choice. */
+:root{
+  --bg:#0a0e16; --panel:#121927; --line:#253149; --fg:#e7ecf4; --muted:#8a97ae;
+  --gold:#e3b04f; --justice:#f0873a; --chaser:#46c1e6; --ok:#5ccf88; --bad:#ee5959;
+  --f-display:"Chakra Petch","Noto Sans TC",system-ui,sans-serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+[hidden]{display:none!important}
+.wrap{max-width:1120px;margin:0 auto;display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.back{flex-basis:100%;font-size:13px;color:var(--muted);text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--gold)}
+h1{font-family:var(--f-display);font-size:24px;margin:0;letter-spacing:.02em;text-wrap:balance}
+h1 span{color:var(--gold)}
+.sub{color:var(--muted);font-size:13px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+canvas{display:block;width:100%;height:auto;aspect-ratio:1;max-width:100%;touch-action:none;outline:none;border-radius:6px}
+canvas:focus-visible{box-shadow:0 0 0 2px var(--gold)}
+.castbar{display:flex;align-items:center;gap:10px;margin:2px 2px 10px;font-family:var(--f-display);font-size:13px}
+.castbar .lbl{min-width:120px;color:var(--gold)}
+.bar{flex:1;height:8px;background:#0a0f19;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#b07d22,var(--gold))}
+.clock{font-variant-numeric:tabular-nums;color:var(--muted);min-width:46px;text-align:right}
+.rail{display:grid;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.card h2{font-family:var(--f-display);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+label.sel{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+select,button{font:inherit;color:var(--fg);background:#0c1220;border:1px solid var(--line);border-radius:6px;padding:6px 10px;max-width:100%}
+button{cursor:pointer;font-weight:700}
+button.primary{background:var(--gold);color:#1a1205;border-color:var(--gold)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.brief{display:grid;gap:4px;font-size:13.5px}
+.brief b{color:var(--gold)}
+.nextName{margin:0;font-weight:700;font-size:16px}
+.nextDesc{margin:4px 0 0;color:var(--fg);font-size:13.5px}
+.verdict{font-family:var(--f-display);font-size:20px;margin:0}
+.verdict.ok{color:var(--ok)} .verdict.bad{color:var(--bad)}
+ol.steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:13px}
+ol.steps li.now{color:var(--gold);font-weight:700}
+ol.steps li.ok::marker{color:var(--ok)} ol.steps li.ok{color:var(--ok)}
+ol.steps li.bad{color:var(--bad)}
+ol.steps ul{margin:2px 0 0;padding-left:16px;color:var(--fg);font-weight:400}
+.stats{display:flex;gap:16px;font-variant-numeric:tabular-nums}
+.stats div{display:grid}
+.stats b{font-family:var(--f-display);font-size:20px}
+.stats span{font-size:12px;color:var(--muted)}
+.help{color:var(--muted);font-size:12.5px;margin:8px 2px 0}
+kbd{font-family:var(--f-display);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px;color:var(--fg)}

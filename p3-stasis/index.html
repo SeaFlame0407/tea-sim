@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="zh-Hant">
 <meta charset="utf-8">
@@ -68,7 +67,7 @@ kbd{font-family:var(--f-display);border:1px solid var(--line);border-bottom-widt
   <header>
     <a class="back" href="../">← 回模擬器選單</a>
     <h1>絕亞歷山大 <span>P3</span> · 時間停止</h1>
-    <span class="sub">依攻略站位巨集練習：12 秒內走到正確位置，時間停止後判定。</span>
+    <span class="sub">依ぬけまる式站位巨集練習：12 秒內走到正確位置，時間停止後判定。</span>
   </header>
 
   <div class="main">
@@ -128,13 +127,13 @@ const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim
 const C={gold:css('--gold'),j:css('--justice'),c:css('--chaser'),ok:css('--ok'),bad:css('--bad'),fg:css('--fg'),muted:css('--muted'),line:css('--line')};
 const TH=['MT','ST','H1','H2'],DD=['D1','D2','D3','D4'];
 const DEB={
-  none:{name:'無點名',desc:'沒有 Debuff。TH 站飛機(Chaser)北面，DD 站飛機南面，誘導アルファソード。'},
-  near:{name:'接近強制（紅綠線）',desc:'和另一位紅綠線要靠近（超過約一個標點寬會死）。TH 站胖子(Justice)北面，DD 站胖子南面，吃火焰噴射。'},
+  none:{name:'無點名',desc:'沒有 Debuff。TH 站胖子(Justice)北面，DD 站胖子南面，吃火焰噴射。'},
+  near:{name:'接近強制（紅綠線）',desc:'和另一位紅綠線要靠近（超過約一個標點寬會死）。TH 站飛機(Chaser)北面，DD 站飛機南面，吃アルファソード。'},
   far:{name:'接近禁止（藍線）',desc:'和另一位藍線要遠離。TH 去胖子側最外紅點，DD 去飛機側最外紅點。'},
   bolt:{name:'加重罰（雷標記）',desc:'發動時帶易傷，不能再被任何攻擊打中。TH、DD 都去胖子側最外紅點。'}
 };
-const MACRO={TH:{none:'飛機北面',bolt:'胖子側面（靠最外）',far:'胖子側面（靠最外）',near:'胖子北面'},
-             DD:{none:'飛機南面',bolt:'胖子側面（靠最外）',far:'飛機側面',near:'胖子南面'}};
+const MACRO={TH:{none:'胖子北面',bolt:'胖子側面（靠最外）',far:'胖子側面（靠最外）',near:'飛機北面'},
+             DD:{none:'胖子南面',bolt:'胖子側面（靠最外）',far:'飛機側面',near:'飛機南面'}};
 const T_FREEZE=12,T_CLEAVE=12.8,T_END=15.5,CAST_START=9;
 let st=null,keys={},ptr=null,last=0;
 let stats={ok:0,all:0,streak:0};
@@ -144,8 +143,8 @@ const saveStats=()=>{try{localStorage.setItem('teaP3stasis',JSON.stringify(stats
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
 function spot(role,deb,xJ,xC){
   const s=Math.sign(xJ),edge=17;
-  if(deb==='none')return{x:xC,y:role==='TH'?-2.6:2.6};
-  if(deb==='near')return{x:xJ,y:role==='TH'?-2.6:2.6};
+  if(deb==='none')return{x:xJ,y:role==='TH'?-2.2:2.2};
+  if(deb==='near')return{x:xC,y:role==='TH'?-2.2:2.2};
   if(deb==='far'&&role==='DD')return{x:-s*edge,y:0};
   if(deb==='far')return{x:s*(edge+.6),y:0};
   return{x:s*edge,y:role==='TH'?-1.3:1.3};
@@ -190,7 +189,7 @@ function resolveDebuffs(){
   const ps=st.ps,L=st.log;
   for(const p of ps)if(Math.hypot(p.x,p.y)>R){p.dead=true;L.push([p,'掉出場外'])}
   const pair=k=>ps.filter(p=>p.deb===k);
-  const [n1,n2]=pair('near'); if(dist(n1,n2)>5){for(const p of [n1,n2]){p.dead=true;L.push([p,`接近強制：兩人相距 ${dist(n1,n2).toFixed(1)}m，太遠`])}}
+  const [n1,n2]=pair('near'); if(dist(n1,n2)>6){for(const p of [n1,n2]){p.dead=true;L.push([p,`接近強制：兩人相距 ${dist(n1,n2).toFixed(1)}m，太遠`])}}
   const [f1,f2]=pair('far'); if(dist(f1,f2)<24){for(const p of [f1,f2]){p.dead=true;L.push([p,`接近禁止：兩人相距 ${dist(f1,f2).toFixed(1)}m，太近`])}}
   // cleaves on frozen positions
   const J={x:st.xJ,y:0},Cc={x:st.xC,y:0};

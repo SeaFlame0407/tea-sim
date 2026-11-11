@@ -176,6 +176,7 @@ Drill.run({
     L.push(`這次 Justice 在<b>${c.s>0?'東北':'西北'}</b> → 超級跳跳 <b>${NUM[jumpNum(c)-1]}</b>，アポカリ由 <b>${NUM[rayNum(c)-1]}</b> 誘導`);
     L.push('之後：回中央分攤浄化の熱線');
     if(c.t>=29){const m=marked(c);
+      L.push(`生命計算數優先度：坦克北　D1＞D2＞D3＞D4　補師南（這次點名 <b>${m.map(q=>q.n).join('、')}</b> → ${m[0].n} 北、${m[1].n} 南）`);
       if(me.count)L.push(`生命計算數：你被點名 → 站<b>${m[0]===me?'北（和坦克）':'南（和補師）'}</b>`);
       else if(me.role==='DD')L.push('生命計算數：沒點名 → <b>不要進兩個圈</b>');
       else L.push(`生命計算數：<b>${me.n==='MT'||me.n==='ST'?'北':'南'}</b>`);
@@ -211,11 +212,11 @@ Drill.run({
     {t:39,name:'生命計算數',
       spot(p,c){if(c.t<29)return null;const m=marked(c);
         if(p.count)return{x:0,y:m[0]===p?-6.5:6.5,r:1};
-        if(p.role==='DD'){const um=c.players.filter(q=>q.role==='DD'&&!q.count);return{x:um[0]===p?-9:9,y:0,r:3}}
+        if(p.role==='DD'){const um=c.players.filter(q=>q.role==='DD'&&!q.count);return{x:um[0]===p?-9:9,y:0,r:3,nograde:true}} // 沒固定位置，只要不進圈；這裡只是給個建議點
         return{x:0,y:p.n==='MT'||p.n==='ST'?-6.5:6.5,r:1.5}},
       desc(p,c){if(c.t<29)return'等兩位 DPS 被點名。';const m=marked(c);
         if(p.count)return m[0]===p?'站北邊，MT、ST 會過來。':'站南邊，H1、H2 會過來。';
-        if(p.role==='DD')return'沒點名的 DPS 不要進兩個圈。';
+        if(p.role==='DD')return'沒點名的 DPS 不要進兩個圈，站哪都可以（建議往東或西閃開）。';
         return p.n==='MT'||p.n==='ST'?'去北邊的圈。':'去南邊的圈。'},
       check(c){const out=[];for(const m of marked(c)){const n=c.players.filter(p=>dist(p,m)<3).length;if(n!==3)out.push([m,`生命計算數圈內 ${n} 人，需要 3 人`])}return out}},
   ],

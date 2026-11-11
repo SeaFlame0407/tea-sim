@@ -12,18 +12,25 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const fmt=s=>{s=Math.max(0,Math.floor(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 
 // ---------- core (no DOM) ----------
-function newState(cfg,meName,auto){
+function newState(cfg,meName,auto,opt){
+  opt=opt||{};
   const fr=cfg.frame?cfg.frame():{rot:0,mx:1};
   const c=Math.round(Math.cos(fr.rot)),s=Math.round(Math.sin(fr.rot));
-  const ctx={frame:fr,t:cfg.t0||0,players:[],by:{},fails:[],
+  const ctx={frame:fr,t:cfg.t0||0,pick:opt.pick==null?'rand':opt.pick,players:[],by:{},fails:[],
     L(u,v){const x=u*fr.mx;return{x:x*c-v*s,y:x*s+v*c}},
     toLocal(x,y){return{u:(x*c+y*s)*fr.mx,v:-x*s+y*c}},
     fail(p,why){this.fails.push({t:this.t,p,why})}};
-  ALL.forEach((n,i)=>{const p={n,role:i<4?'TH':'DD',x:0,y:0,me:n===meName,tag:'',lastSi:-1,wait:0,
+  ALL.forEach((n,i)=>{const p={n,role:i<4?'TH':'DD',x:0,y:0,me:n===meName,tag:'',lastSi:-1,wait:0,face:-Math.PI/2,kbUntil:-1,kbReady:0,
     jx:Math.random()*2-1,jy:Math.random()*2-1};ctx.players.push(p);ctx.by[n]=p});
   ctx.me=ctx.by[meName];
   cfg.setup(ctx);
-  const st={cfg,ctx,si:0,results:[],done:false,lastFail:0,auto:!!auto};
+  // stopOnWipe：測驗模式有人倒地就停；練習／示範模式記錄錯誤但繼續跑完
+  const st={cfg,ctx,si:0,results:[],done:false,wiped:false,lastFail:0,auto:!!auto,stopOnWipe:opt.stopOnWipe!==false};
+  ctx.auto=st.auto;
+  // 防擊退：玩家要自己按（F），電腦隊友和示範模式視為照攻略時機開好
+  ctx.kbActive=p=>(p.me&&!st.auto)?ctx.t<p.kbUntil:true;
+  // 面向：玩家看最後移動方向；電腦隊友視為面向外圈
+  ctx.faceOf=p=>(p.me&&!st.auto)?p.face:Math.atan2(p.y,p.x);
   while(st.si<cfg.steps.length&&cfg.steps[st.si].t<ctx.t)st.si++;
   return st;
 }
@@ -58,20 +65,26 @@ function tick(st,dt,input){
       if(input.ptr&&!vx&&!vy){const dx=input.ptr.x-p.x,dy=input.ptr.y-p.y,d=Math.hypot(dx,dy);
         if(d>.2){const k=Math.min(1,d/(SPEED*dt));vx=dx/d*k;vy=dy/d*k}}
       const m=Math.hypot(vx,vy);if(m>1){vx/=m;vy/=m}
+      if(m>0)p.face=Math.atan2(vy,vx);
       p.x+=vx*SPEED*dt;p.y+=vy*SPEED*dt;
+      if(input.kb&&ctx.t>=p.kbReady){p.kbUntil=ctx.t+6;p.kbReady=ctx.t+120}
     }else{
-      if(p.lastSi!==st.si){p.lastSi=st.si;p.wait=ctx.t+(p.me?.1:.25+Math.random()*.8)}
-      if(ctx.t>=p.wait){const g=nextTarget(st,p);
+      const g=nextTarget(st,p);
+      // 只有目標位置改變時才有反應時間
+      if(g&&(!p.tgt||Math.hypot(g.x-p.tgt.x,g.y-p.tgt.y)>.5)){p.tgt=g;p.wait=ctx.t+(p.me?.1:.25+Math.random()*.8)}
+      if(ctx.t>=p.wait){
         if(g){const j=Math.min(.45,(g.r==null?2.5:g.r)*.2),tx=g.x+p.jx*j,ty=g.y+p.jy*j;
           const dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);
-          if(d>.02){const s=Math.min(d,SPEED*.95*dt);p.x+=dx/d*s;p.y+=dy/d*s}}}
+          if(d>.02){const s=Math.min(d,SPEED*.95*dt);p.x+=dx/d*s;p.y+=dy/d*s;if(d>.3)p.face=Math.atan2(dy,dx)}}}
     }
     const r=Math.hypot(p.x,p.y);if(r>R-.4){p.x*=(R-.4)/r;p.y*=(R-.4)/r}
   }
   if(cfg.update)cfg.update(ctx,dt);
   let graded=null;
   while(st.si<cfg.steps.length&&ctx.t>=cfg.steps[st.si].t){graded=grade(st,cfg.steps[st.si]);st.si++}
-  if(ctx.t>=cfg.end){st.done=true;if(st.results.length)flushFails(st,st.results[st.results.length-1])}
+  if(ctx.fails.length>st.lastFail){const res={name:'有人倒地',t:ctx.t,ok:false,notes:[],extra:true};flushFails(st,res);st.results.push(res)}
+  if(ctx.fails.length&&st.stopOnWipe){st.done=true;st.wiped=true;return graded}
+  if(ctx.t>=cfg.end)st.done=true;
   return graded;
 }
 // Headless run with everyone auto-moving; used for self-tests.
@@ -92,19 +105,23 @@ function run(cfg){
     <div class="stage">
       <div class="castbar"><span class="lbl" id="castName">待機中</span><div class="bar"><i id="castFill"></i></div><span class="clock" id="clock">${fmt(cfg.clock0+(cfg.t0||0))}</span></div>
       <canvas id="cv" width="${W}" height="${W}" tabindex="0" aria-label="場地，用方向鍵或點擊移動"></canvas>
-      <p class="help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或方向鍵移動，手機按住場地往手指方向走。<kbd>Space</kbd> 開始／再來一次。金色虛線圈是下一步的目標點（練習模式）。</p>
+      <div class="kbrow"><button id="kb" type="button">防擊退（F）</button><span id="kbState" class="kbstate">可使用</span></div>
+      <p class="help"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或方向鍵移動，手機按住場地往手指方向走。角色面向最後移動的方向（圓點上的小三角）。<kbd>F</kbd> 防擊退（6 秒，每次只能用一次）。<kbd>Space</kbd> 開始／再來一次。金色虛線圈是下一步的目標點（練習模式）。測驗模式有人倒地就會停止。</p>
     </div>
     <div class="rail">
       <div class="card"><h2>設定</h2>
         <div class="row">
           <label class="sel" for="slot">職位 <select id="slot"><option value="rand">隨機</option>${ALL.map(n=>`<option>${n}</option>`).join('')}</select></label>
           <label class="sel" for="mode">模式 <select id="mode"><option value="practice">練習</option><option value="test">測驗</option><option value="demo">示範（自動走）</option></select></label>
+          ${cfg.pick?`<label class="sel" for="pick">${cfg.pick.label} <select id="pick"><option value="rand">隨機</option>${cfg.pick.options.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select></label>`:''}
         </div>
+        <p class="hint">改完設定按「開始」才會套用。練習／示範模式有人倒地會標紅但繼續跑完；測驗模式倒地就停。</p>
         <div class="row" style="margin-top:10px"><button class="primary" id="go">開始</button></div>
       </div>
       <div class="card"><h2>你的任務</h2><div class="brief" id="brief">按「開始」，會隨機分配點名。</div></div>
       <div class="card"><h2>下一步</h2><p class="nextName" id="nextName">—</p><p class="nextDesc" id="nextDesc"></p></div>
-      <div class="card" id="resultCard" hidden><h2>結果</h2><p class="verdict" id="verdict"></p></div>
+      ${cfg.aside||''}
+      <div class="card" id="resultCard" hidden><h2>結果</h2><p class="verdict" id="verdict"></p><ul class="deaths" id="deaths"></ul></div>
       <div class="card"><h2>流程</h2><ol class="steps" id="steps"></ol></div>
       <div class="card"><h2>紀錄</h2><div class="stats"><div><b id="sOk">0</b><span>成功</span></div><div><b id="sAll">0</b><span>總次數</span></div><div><b id="sStreak">0</b><span>連勝</span></div></div></div>
     </div>
@@ -114,14 +131,15 @@ function run(cfg){
   const cv=$('cv'),g=cv.getContext('2d');
   const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
   const C={gold:css('--gold'),j:css('--justice'),c:css('--chaser'),ok:css('--ok'),bad:css('--bad'),fg:css('--fg'),muted:css('--muted')};
-  let st=null,keys={},ptr=null,last=0,flash=null,stats={ok:0,all:0,streak:0};
+  let st=null,keys={},ptr=null,kbPress=false,last=0,flash=null,stats={ok:0,all:0,streak:0};
   try{const s=JSON.parse(localStorage.getItem(cfg.key)||'null');if(s)stats=s}catch(e){}
   const save=()=>{try{localStorage.setItem(cfg.key,JSON.stringify(stats))}catch(e){}};
   const showStats=()=>{$('sOk').textContent=stats.ok;$('sAll').textContent=stats.all;$('sStreak').textContent=stats.streak};
 
   function start(){
     let me=$('slot').value;if(me==='rand')me=shuffle(ALL)[0];
-    st=newState(cfg,me,$('mode').value==='demo');flash=null;
+    const mode=$('mode').value;
+    st=newState(cfg,me,mode==='demo',{pick:$('pick')?$('pick').value:'rand',stopOnWipe:mode==='test'});flash=null;
     $('resultCard').hidden=true;$('go').textContent='重新開始';
     renderSteps();cv.focus();
   }
@@ -136,16 +154,26 @@ function run(cfg){
     });
   }
   function finish(){
-    const ok=st.results.every(r=>r.ok);
+    const ok=st.results.every(r=>r.ok)&&!st.wiped;
     if(!st.auto){stats.all++;if(ok){stats.ok++;stats.streak++}else stats.streak=0;save();showStats()}
     const v=$('verdict');const bad=st.results.filter(r=>!r.ok).length;
-    v.textContent=st.auto?'示範結束':(ok?'全部檢查點通過':`${bad} 個檢查點失敗，看流程裡的紅字`);
-    v.className='verdict '+(ok?'ok':'bad');$('resultCard').hidden=false;renderSteps();
+    const deaths=st.results.filter(r=>r.extra||r.notes.some(n=>!n.startsWith('你離正確位置'))).length;
+    v.textContent=st.wiped?`有人倒地，在 ${fmt(cfg.clock0+st.ctx.t)} 停止。按 Space 重新來過`:st.auto?(deaths?'示範結束（有人倒地，看流程紅字）':'示範結束'):(ok?'全部檢查點通過':`${bad} 個檢查點失敗，看流程裡的紅字`);
+    v.className='verdict '+(ok||(st.auto&&!st.wiped)?'ok':'bad');
+    const ul=$('deaths');ul.innerHTML='';
+    if(st.wiped){const last=st.results[st.results.length-1];last.notes.filter(n=>!n.startsWith('你離正確位置')).forEach(n=>{const li=document.createElement('li');li.textContent=n;ul.appendChild(li)})}
+    $('resultCard').hidden=false;renderSteps();
   }
   function hud(){
     if(!st)return;const ctx=st.ctx,s=cfg.steps[st.si],mode=$('mode').value;
     $('clock').textContent=fmt(cfg.clock0+ctx.t);
     $('brief').innerHTML=cfg.brief(ctx.me,ctx);
+    const me=ctx.me,ks=$('kbState');
+    if(st.auto)ks.textContent='示範模式自動處理';
+    else if(ctx.t<me.kbUntil)ks.textContent=`生效中 ${(me.kbUntil-ctx.t).toFixed(1)} 秒`;
+    else if(ctx.t<me.kbReady)ks.textContent='已用過';
+    else ks.textContent='可使用';
+    ks.className='kbstate'+(ctx.t<me.kbUntil?' on':'');
     if(s&&!st.done){
       const prev=st.si?cfg.steps[st.si-1].t:(cfg.t0||0);
       $('castName').textContent=s.name;$('castFill').style.width=Math.min(100,(ctx.t-prev)/(s.t-prev)*100)+'%';
@@ -162,6 +190,8 @@ function run(cfg){
     line(a,b,col,lw){g.strokeStyle=col;g.lineWidth=lw||2;g.beginPath();g.moveTo(X(a.x),Y(a.y));g.lineTo(X(b.x),Y(b.y));g.stroke()},
     poly(pts,fill,stroke){g.beginPath();pts.forEach((p,i)=>i?g.lineTo(X(p.x),Y(p.y)):g.moveTo(X(p.x),Y(p.y)));g.closePath();if(fill){g.fillStyle=fill;g.fill()}if(stroke){g.strokeStyle=stroke;g.lineWidth=1.5;g.stroke()}},
     cone(o,ang,len,half,col){g.fillStyle=col+'55';g.strokeStyle=col;g.lineWidth=1.5;g.beginPath();g.moveTo(X(o.x),Y(o.y));g.arc(X(o.x),Y(o.y),len*SC,ang-half,ang+half);g.closePath();g.fill();g.stroke()},
+    img(p,im,size,label,col){if(!im||!im.complete||!im.naturalWidth)return false;const h=size*SC,w=h*im.naturalWidth/im.naturalHeight;
+      g.drawImage(im,X(p.x)-w/2,Y(p.y)-h/2,w,h);if(label){g.fillStyle=col||C.fg;g.font='700 14px "Noto Sans TC",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(label,X(p.x),Y(p.y)+h/2+8)}return true},
     boss(p,label,col,shape){g.save();g.translate(X(p.x),Y(p.y));g.fillStyle=col+'33';g.strokeStyle=col;g.lineWidth=3;g.beginPath();
       if(shape==='sq')g.rect(-1.5*SC,-1.5*SC,3*SC,3*SC);else if(shape==='tri'){g.moveTo(0,-1.8*SC);g.lineTo(1.6*SC,1.2*SC);g.lineTo(-1.6*SC,1.2*SC);g.closePath()}else g.arc(0,0,1.7*SC,0,Math.PI*2);
       g.fill();g.stroke();g.fillStyle=col;g.font='700 14px "Noto Sans TC",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(label,0,2.8*SC);g.restore()},
@@ -195,14 +225,19 @@ function run(cfg){
     const mode=$('mode').value;
     if(mode!=='test'&&!st.done){const tg=nextTarget(st,ctx.me);if(tg){g.strokeStyle=C.gold;g.setLineDash([6,5]);g.lineWidth=2;g.beginPath();g.arc(X(tg.x),Y(tg.y),Math.max(1.2,tg.r==null?2.5:tg.r)*SC,0,Math.PI*2);g.stroke();g.setLineDash([])}}
     for(const p of ctx.players){
-      const px=X(p.x),py=Y(p.y),r=p.me?13:10;
+      const px=X(p.x),py=Y(p.y),r=p.me?15:12;
       g.fillStyle=p.role==='TH'?(p.n[0]==='H'?'#3fae6a':'#3d6fd6'):'#c2464a';
       g.strokeStyle=p.me?C.gold:'#0a0e16';g.lineWidth=p.me?3:2;
       g.beginPath();g.arc(px,py,r,0,Math.PI*2);g.fill();g.stroke();
-      g.fillStyle='#fff';g.font=`700 ${p.me?12:10}px "Chakra Petch",sans-serif`;g.textAlign='center';g.textBaseline='middle';g.fillText(p.n,px,py+1);
+      g.fillStyle='#fff';g.font=`700 ${p.me?13:11}px "Chakra Petch",sans-serif`;g.textAlign='center';g.textBaseline='middle';g.fillText(p.n,px,py+1);
       const tag=cfg.tag?cfg.tag(p,ctx):'';
-      if(tag){g.font='700 12px "Noto Sans TC",sans-serif';const w=g.measureText(tag).width+8;g.fillStyle='#0a0e16cc';g.fillRect(px-w/2,py-r-21,w,16);g.fillStyle=C.gold;g.fillText(tag,px,py-r-12)}
-      if(p.me){g.fillStyle=C.gold;g.font='700 12px "Noto Sans TC",sans-serif';g.fillText('你',px,py+r+11)}
+      if(tag){const fs=cfg.tagSize||18,h=fs+6;g.font=`700 ${fs}px "Noto Sans TC",sans-serif`;const w=g.measureText(tag).width+10;
+        g.fillStyle='#0a0e16dd';g.fillRect(px-w/2,py-r-h-4,w,h);g.strokeStyle=(cfg.tagColor&&cfg.tagColor(p,ctx))||C.gold;g.lineWidth=p.me?2.5:1.5;g.strokeRect(px-w/2,py-r-h-4,w,h);
+        g.fillStyle=(cfg.tagColor&&cfg.tagColor(p,ctx))||C.gold;g.fillText(tag,px,py-r-4-h/2+1)}
+      // 面向三角
+      g.save();g.translate(px,py);g.rotate(p.face);g.fillStyle=p.me?C.gold:'#e7ecf4cc';g.beginPath();g.moveTo(r+7,0);g.lineTo(r+1,-5);g.lineTo(r+1,5);g.closePath();g.fill();g.restore();
+      if(p.me&&!st.auto&&ctx.t<p.kbUntil){g.strokeStyle='#7fe3ff';g.lineWidth=3;g.beginPath();g.arc(px,py,r+5,0,Math.PI*2);g.stroke()}
+      if(p.me){g.fillStyle=C.gold;g.font='700 16px "Noto Sans TC",sans-serif';g.fillText('你',px,py+r+13)}
     }
     if(cfg.draw)cfg.draw(H,ctx,'over');
     if(flash&&ctx.t-flash.t<1.6){g.fillStyle=flash.ok?C.ok:C.bad;g.font='700 22px "Noto Sans TC",sans-serif';g.textAlign='center';g.fillText((flash.ok?'✓ ':'✗ ')+flash.name,W/2,34)}
@@ -211,7 +246,7 @@ function run(cfg){
     const dt=Math.min(.05,(ts-(last||ts))/1000);last=ts;
     if(st&&!st.done){
       const vx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),vy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
-      const res=tick(st,dt,{vx,vy,ptr});
+      const res=tick(st,dt,{vx,vy,ptr,kb:kbPress});kbPress=false;
       if(res){flash={t:st.ctx.t,ok:res.ok,name:res.name};renderSteps()}
       if(st.done)finish();
       hud();
@@ -220,6 +255,7 @@ function run(cfg){
   }
   addEventListener('keydown',e=>{const k=e.key.toLowerCase();
     if(k===' '&&document.activeElement.tagName!=='SELECT'&&document.activeElement.tagName!=='BUTTON'){e.preventDefault();if(!st||st.done)start();return}
+    if(k==='f'&&document.activeElement.tagName!=='SELECT'){kbPress=true;return}
     if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)){if(document.activeElement.tagName!=='SELECT')e.preventDefault();keys[k]=true}});
   addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
   addEventListener('blur',()=>{keys={};ptr=null});
@@ -228,6 +264,9 @@ function run(cfg){
   cv.addEventListener('pointermove',e=>{if(ptr)ptr=toWorld(e)});
   const up=()=>{ptr=null};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
   $('go').addEventListener('click',start);
+  // 改設定不自動開始，只提示要按開始才會套用
+  ['slot','mode','pick'].forEach(id=>{const el=$(id);if(el)el.addEventListener('change',()=>{if(st)$('go').textContent='套用設定並開始'})});
+  $('kb').addEventListener('click',()=>{kbPress=true;cv.focus()});
   showStats();renderSteps();requestAnimationFrame(loop);
 }
 

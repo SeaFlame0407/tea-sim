@@ -4,6 +4,31 @@
 (function(){
 const {DD,shuffle,dist}=Drill;
 const NUM='①②③④⑤⑥⑦⑧';
+const CHASER_IMG=typeof Image!=='undefined'?Object.assign(new Image(),{src:'img/chaser.png'}):null;
+// Chaser 示意圖（圖片裁自ぬけまる解說影片截圖）
+const ASIDE=`<div class="card"><h2>Chaser 怎麼打</h2>
+  <div class="chaserfig"><img src="img/chaser.png" alt="Chaser（紅色機體）"><p>Chaser 依號碼順序處理：<b>奇數</b>號吃アルファソード（扇形），<b>偶數</b>號吃突進（擊退）。</p></div>
+  <div class="chaserdia">
+    <figure><svg viewBox="0 0 120 110" role="img" aria-label="奇數：Chaser 在你背後朝你面向揮扇形">
+      <path d="M60 78 L18 8 A80 80 0 0 1 102 8 Z" fill="#46c1e633" stroke="#46c1e6"/>
+      <image href="img/chaser.png" x="44" y="72" width="32" height="34"/>
+      <circle cx="60" cy="52" r="8" fill="#3d6fd6" stroke="#e3b04f" stroke-width="2"/>
+      <path d="M60 36 l-5 8 h10z" fill="#e3b04f"/>
+      <text x="60" y="56" font-size="9" fill="#fff" text-anchor="middle" font-weight="700">1</text>
+      <text x="60" y="16" font-size="8" fill="#e7ecf4" text-anchor="middle">場外（外圈）↑</text>
+    </svg><figcaption>奇數：Chaser 出現在你<b>背後</b>，朝你面向揮扇形 → <b>正面朝外圈</b>，才不會掃到隊友。</figcaption></figure>
+    <figure><svg viewBox="0 0 120 110" role="img" aria-label="偶數：Chaser 從上一個奇數的位置衝向你">
+      <image href="img/chaser.png" x="4" y="30" width="30" height="32"/>
+      <line x1="30" y1="46" x2="92" y2="46" stroke="#46c1e6" stroke-width="7" opacity=".55"/>
+      <line x1="30" y1="46" x2="92" y2="46" stroke="#fff" stroke-width="1.5"/>
+      <circle cx="98" cy="46" r="8" fill="#c2464a" stroke="#e3b04f" stroke-width="2"/>
+      <path d="M82 46 l8 -5 v10z" fill="#e3b04f"/>
+      <text x="98" y="50" font-size="9" fill="#fff" text-anchor="middle" font-weight="700">2</text>
+      <circle cx="98" cy="46" r="12" fill="none" stroke="#7fe3ff" stroke-width="2"/>
+      <text x="60" y="80" font-size="8" fill="#e7ecf4" text-anchor="middle">從 1 號的位置衝過來</text>
+      <text x="60" y="94" font-size="8" fill="#7fe3ff" text-anchor="middle">開防擊退 或 面向 Chaser</text>
+    </svg><figcaption>偶數：Chaser 從<b>上一個奇數號</b>的位置衝向你 → 開防擊退（F）或面向它；路線上不要站人。</figcaption></figure>
+  </div></div>`;
 const RED={NW:[-12.9,-12.9],NE:[12.9,-12.9],SW:[-12.9,12.9],SE:[12.9,12.9]};
 const HALF={SW:[-12.2,12.2],SE:[12.2,12.2]}; // 3、4 號站紅點的一半（不站最外）
 const OUT={SW:[-14.4,14.4],SE:[14.4,14.4]};  // 被超級跳後往外一步
@@ -11,8 +36,9 @@ const W_HI=[-18.5,-1.5],W_LO=[-18.5,1.5],E_HI=[18.5,-1.5],E_LO=[18.5,1.5];
 const ROOM_R=[6.8,5.5,3.5];
 const RAY_LEN=27,RAY_HALF=27*Math.PI/180;
 // c.s = 1：Justice 在東北；-1：Justice 在西北（超級跳和アポカリ左右對調）
-// 懺悔の間固定：西偏北、東偏南；生成後第 10、14、18 秒判定
-const room=(c,side)=>side==='L'?[-11,-4.7]:[11,4.7];
+// c.w = 1：懺悔の間在西偏北＋東偏南；-1：西偏南＋東偏北（隨機）。生成後第 10、14、18 秒判定
+// c.wheel = 1：第二個輪子（蒸汽戰輪）在東；-1：在西。北邊那個固定。只影響畫面，十字範圍一樣。
+const room=(c,side)=>side==='L'?[-11,-4.7*c.w]:[11,4.7*c.w];
 const jumpNum=c=>c.s>0?3:4, rayNum=c=>c.s>0?2:1;
 const STEP_IN=[[5,6],[7,8],[1,2]];
 const ROUTE={
@@ -30,7 +56,7 @@ const odd=p=>p.num%2===1;
 // 每個檢查點每個號碼該站的位置
 function spotAt(k,p,c){
   const n=p.num,o=odd(p),sideRoom=o?'L':'R';
-  const roomEdge1=o?[-16.5,-5]:[16.5,5], roomEdge2=o?[-15,-3]:[14.5,6.2];
+  const roomEdge1=o?[-16.5,-5*c.w]:[16.5,5*c.w], roomEdge2=o?[-15,-3*c.w]:[14.5,6.2*c.w];
   const hi=o?W_HI:E_HI,lo=o?W_LO:E_LO,red2=o?RED.NW:RED.NE,red3=o?RED.SW:RED.SE;
   const jumped=n===jumpNum(c);
   switch(k){
@@ -124,13 +150,19 @@ Drill.run({
   key:'teaP3wormhole',
   title:'絕亞歷山大 <span>P3</span> · 次元斷絕',
   sub:'依ぬけまる式練習：依號碼散開、超級跳與アポカリ、懺悔の間 5・6 → 7・8 → 1・2、浄化の熱線分攤、生命計算數。',
-  idle:'亞歷山大固定南邊，Justice 隨機在東北或西北',
+  idle:'亞歷山大固定南邊；Justice、輪子、懺悔の間位置隨機',
   t0:0,end:41,clock0:155,
   frame:()=>({rot:0,mx:1}),
+  pick:{label:'號碼',options:[1,2,3,4,5,6,7,8].map(n=>[n,NUM[n-1]+(n%2?' 奇數':' 偶數')])},
+  aside:ASIDE,
   setup(c){
     c.s=Math.random()<.5?1:-1;
+    c.w=Math.random()<.5?1:-1;
+    c.wheel=Math.random()<.5?1:-1;
     c.justice={x:14*c.s,y:-14};c.chaser={x:-14*c.s,y:-14};
-    const nums=shuffle([1,2,3,4,5,6,7,8]);
+    let nums=shuffle([1,2,3,4,5,6,7,8]);
+    const want=+c.pick;
+    if(want>=1&&want<=8){nums=nums.filter(n=>n!==want);nums.splice(c.players.indexOf(c.me),0,want)}
     c.players.forEach((p,i)=>{p.num=nums[i];p.x=(Math.random()-.5)*5;p.y=(Math.random()-.5)*5});
     c.fx=[];c.chaserAt=null;c.prevOdd=null;
     shuffle(DD).slice(0,2).forEach(n=>c.by[n].count=true);
@@ -140,6 +172,7 @@ Drill.run({
   tag(p,c){return NUM[p.num-1]+(c.t>=29&&p.count?' 計':'')},
   brief(me,c){
     const n=me.num,L=[`號碼：<b>${NUM[n-1]}</b>（${n%2?'奇數・西側':'偶數・東側'}）`,`路線：${ROUTE[n]}`,`防擊退（F）：${AMULET[n]}${n%2?'':'，沒開就要面向 Chaser'}`,n%2?'扇形：面向外圈（最後移動的方向）':'突進：不要背對 Chaser 又沒開防擊退'];
+    L.push(`懺悔の間：<b>${c.w>0?'西偏北＋東偏南':'西偏南＋東偏北'}</b>　輪子：北＋<b>${c.wheel>0?'東':'西'}</b>`);
     L.push(`這次 Justice 在<b>${c.s>0?'東北':'西北'}</b> → 超級跳跳 <b>${NUM[jumpNum(c)-1]}</b>，アポカリ由 <b>${NUM[rayNum(c)-1]}</b> 誘導`);
     L.push('之後：回中央分攤浄化の熱線');
     if(c.t>=29){const m=marked(c);
@@ -190,16 +223,17 @@ Drill.run({
     if(layer!=='under')return;
     const t=c.t,C=H.C;
     H.boss({x:0,y:19.5},'亞歷山大','#e3b04f','circle');
-    if(t<11)for(const p of [{x:0,y:-20.5},{x:20.5*c.s,y:0}]){H.circle(p,1.3,'#ff6a8a55','#ff6a8a',2);H.text(p,'チャクラム','#ff9ab0',11,-22)}
+    if(t<11)for(const p of [{x:0,y:-20.5},{x:20.5*c.wheel,y:0}]){H.circle(p,1.3,'#ff6a8a55','#ff6a8a',2);H.text(p,'チャクラム','#ff9ab0',11,-22)}
     if(t>=9&&t<10.6){H.poly([{x:-2.5,y:-20},{x:2.5,y:-20},{x:2.5,y:20},{x:-2.5,y:20}],'#ff6a8a33',null);H.poly([{x:-20,y:-2.5},{x:20,y:-2.5},{x:20,y:2.5},{x:-20,y:2.5}],'#ff6a8a33',null)}
     if(t>=7){const done=t<17?0:t<21?1:t<25?2:3;
       if(done<3)for(const sd of ['L','R']){const r=room(c,sd),p={x:r[0],y:r[1]};H.circle(p,ROOM_R[done],'#9a7bff33','#9a7bff',2);H.text(p,`懺悔 ${3-done}`,'#c9b8ff',12)}}
     H.boss(c.justice,'Justice',C.j,'sq');
-    if(t<1)H.boss(c.chaser,'Chaser',C.c,'tri');
-    if(c.chaserAt&&t<27.5)H.boss(c.chaserAt,'Chaser',C.c,'tri');
+    const chaser=p=>H.img(p,CHASER_IMG,4.2,'Chaser',C.c)||H.boss(p,'Chaser',C.c,'tri');
+    if(t<1)chaser(c.chaser);
     for(const e of c.fx){if(t-e.t>1.4)continue;
       if(e.kind==='cone')H.cone(e.o,e.a,CONE_LEN,CONE_HALF,C.c);
       else{H.line(e.a,e.b,C.c,10);H.line(e.a,e.b,'#ffffff',2)}}
+    if(c.chaserAt&&t<27.5)chaser(c.chaserAt);
     if(t>=13&&t<14.4&&c.land)H.circle(c.land,6,'#f0873a33','#f0873a',2);
     if(c.ray)H.cone(c.ray.o,c.ray.a,RAY_LEN,RAY_HALF,'#ffb347');
     if(t>=19&&t<20.6){H.poly([{x:-6,y:-20},{x:6,y:-20},{x:6,y:20},{x:-6,y:20}],'#e3b04f44','#e3b04f');H.poly([{x:-20,y:16},{x:20,y:16},{x:20,y:21},{x:-20,y:21}],'#e3b04f44','#e3b04f')}
